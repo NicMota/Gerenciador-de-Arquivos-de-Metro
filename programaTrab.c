@@ -8,9 +8,12 @@
 
 */
 
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "fornecidas.c"
 
 struct header{
     char status;
@@ -20,27 +23,59 @@ struct header{
     int nParesEstação; 
 
 };
-struct data_reg{
-    int codEstacao;
+
+//campos de tamanho fixo com valores nulos devem ser representados pelo valor -1
+//campos de tamanho variavel com valores nulos tem tamanho 0 no indicador de tamanho
+
+
+struct data_reg{ // 80 bytes
+    char removido;
+    int proximo;
+    int codEstacao; //not null
     int codLinha;
     int codProxEstacao;
     int distProxEstacao;
     int codLinhaIntegra;
     int codEstIntegra;
-    char* nomeEstacao;
-    char* nomeLinha;
-    char removido;
-    int proximo;
     int tamNomeEstacao;
-    int tamNomeLinha;
+    char* nomeEstacao; //not null
+    int tamNomeLinha;   
+    char* nomeLinha;
+   
+    
+    
 };
 
 
 void criarRegistros()
 {
+    FILE* arquivo = fopen("estacoes.csv","r");
+    
+    if(arquivo == NULL)
+        return; //adicionar msg de erro
 
-    FILE* arquivo = fopen("estacoes.csv","rw+");    
+    char linha[1024];
 
+    fgets(linha,sizeof(linha),arquivo);
+
+
+    while(fgets(linha,sizeof(linha),arquivo))
+    {   
+
+
+        char* campos = strtok(linha,",");
+        while(campos != 0){
+            printf("campo %s\n",campos);
+            campos = strtok(0,",");
+        }
+        
+    }
+
+    FILE* out = fopen("estacoes.bin","w");
+
+    
+    fclose(arquivo);
+    
 }
 
 
@@ -55,6 +90,12 @@ int main()
     switch(option)
     {
         case 1:
+            
+            char nome_arquivo_in[256];
+            char nome_arquivo_out[256];
+
+            scanf("%s",nome_arquivo_in);
+            scanf("%s",nome_arquivo_out);
             
             criarRegistros();
 
