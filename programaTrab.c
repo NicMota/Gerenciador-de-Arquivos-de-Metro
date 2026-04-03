@@ -14,45 +14,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include "fornecidas.c"
-#include "RegistroDados.h"
-#include "Cabecalho.h"
+#include "registro_dados.h"
+#include "cabecalho.h"
 #include "funcoes.c"
 
 
 
 
 
-typedef struct par{
-    int codEstacao;
-    int codProxEstacao;
-}par;
 
 
-int procurar_nome_estacao(char* nome, char** nomes,int tam)
-{
-    for(int i = 0;i<tam;i++)
-    {
-        if(strcmp(nome,nomes[i])==0)
-            return 1;
-    }
-    return 0;
-}
-int procurar_par(par *p, par** pares, int tam)
-{
-    for(int i = 0;i<tam;i++)
-    {
-        if(p->codEstacao == pares[i]->codEstacao && p->codProxEstacao == pares[i]->codProxEstacao)
-            return 1;
-    }
-    return 0;
-}
 
 
+
+//função CRIAR TABELA
 void criarRegistros(char *arquivo_in, char* arquivo_out)
 {
     FILE* arquivo = fopen(arquivo_in,"r");
-    
-    if(arquivo == NULL)
+    FILE* out = fopen(arquivo_out,"wb");
+    if(arquivo == NULL || out == NULL)
         return; //adicionar msg de erro
 
     char linha[1024];
@@ -66,14 +46,7 @@ void criarRegistros(char *arquivo_in, char* arquivo_out)
     c->nEstações = 0;
     c->nParesEstação=0;
     
-  
-
-    FILE* out = fopen(arquivo_out,"wb");
-    fwrite(&c->status, 1, 1, out);
-    fwrite(&c->topo, sizeof(int), 1, out);
-    fwrite(&c->proxRRN, sizeof(int), 1, out);
-    fwrite(&c->nEstações, sizeof(int), 1, out);
-    fwrite(&c->nParesEstação, sizeof(int), 1, out);
+    escrever_cabecalho(c,out);
 
     char **nomes_estacao = malloc(200*sizeof(char*));
     int qtdNomes = 0;
@@ -85,12 +58,6 @@ void criarRegistros(char *arquivo_in, char* arquivo_out)
 
     while(fgets(linha,sizeof(linha),arquivo))
     {   
-       
-       
-
-     
-        
-       
        
         reg_dados *rg = ler_dados(linha);
 
@@ -121,20 +88,9 @@ void criarRegistros(char *arquivo_in, char* arquivo_out)
         
         
       
+        escrever_dados(rg,out);
 
-
-        fwrite(&rg->removido,1,1,out);
-        fwrite(&rg->proximo,sizeof(int),1,out);
-        fwrite(&rg->codEstacao,sizeof(int),1,out);
-        fwrite(&rg->codLinha,sizeof(int),1,out);
-        fwrite(&rg->codProxEstacao,sizeof(int),1,out);
-        fwrite(&rg->distProxEstacao,sizeof(int),1,out);
-        fwrite(&rg->codLinhaIntegra,sizeof(int),1,out);
-        fwrite(&rg->codEstIntegra,sizeof(int),1,out);
-        fwrite(&rg->tamNomeEstacao,sizeof(int),1,out);
-        fwrite(rg->nomeEstacao,1,rg->tamNomeEstacao,out);
-        fwrite(&rg->tamNomeLinha,sizeof(int),1,out);
-        fwrite(rg->nomeLinha,1,rg->tamNomeLinha,out);
+        
 
         int bytes = 37 + rg->tamNomeEstacao + rg->tamNomeLinha;
         char lixo = '$';
@@ -160,11 +116,7 @@ void criarRegistros(char *arquivo_in, char* arquivo_out)
     c->nParesEstação = qtdPares;
     
     fseek(out,0,SEEK_SET);
-    fwrite(&c->status, 1, 1, out);
-    fwrite(&c->topo, sizeof(int), 1, out);
-    fwrite(&c->proxRRN, sizeof(int), 1, out);
-    fwrite(&c->nEstações, sizeof(int), 1, out);
-    fwrite(&c->nParesEstação, sizeof(int), 1, out);
+    escrever_cabecalho(c,out);
     
     
     
@@ -184,11 +136,61 @@ void criarRegistros(char *arquivo_in, char* arquivo_out)
     fclose(arquivo);
     fclose(out);
     BinarioNaTela(arquivo_out);
-    
+
+    return;
 }
 
 
 
+void recuperar_registros(char *nome_arquivo)
+{
+    FILE *arq = fopen(nome_arquivo,"rb");
+    if(arq == NULL)
+    {
+        printf("ERRO AO ABRIR ARQUIVO");
+        return;
+    }
+    //pula cabecalho
+    fseek(arq,17,SEEK_SET);
+
+    ;
+    reg_dados *rg = malloc(sizeof(reg_dados));
+    while(fread(&rg->removido,sizeof(char),1,arq) == 1)
+    {
+        fread(&rg->proximo,sizeof(int),1,arq);
+        fread(&rg->codEstacao,sizeof(int),1,arq);
+        fread(&rg->codLinha,sizeof(int),1,arq);
+        fread(&rg->codProxEstacao,sizeof(int),1,arq);
+        fread(&rg->distProxEstacao,sizeof(int),1,arq);
+        fread(&rg->codLinhaIntegra,sizeof(int),1,arq);
+        fread(&rg->codEstIntegra,sizeof(int),1,arq);
+        fread(&rg->tamNomeEstacao,sizeof(int),1,arq);
+        rg->nomeEstacao = malloc(rg->tamNomeEstacao);
+        fread(rg->nomeEstacao,1,rg->tamNomeEstacao,arq);
+        
+        fread(&rg->tamNomeLinha,sizeof(int),1,arq);
+        rg->nomeLinha = malloc(rg->tamNomeLinha);
+        fread(rg->nomeLinha,1,rg->tamNomeLinha,arq);
+
+        int bytes = 37 + rg->tamNomeEstacao + rg->tamNomeLinha;
+        fseek(arq, 80 - bytes, SEEK_CUR); // pula o lixo
+        imprimir_registro(rg);
+    }
+    
+    free(rg->nomeEstacao);
+    free(rg->nomeLinha);
+    free(rg);
+    
+    fclose(arq);
+
+}
+
+void recuperar_registros_condicional(char *nome_arquivo)
+{
+    FILE *arq = fopen(arq,"rb");
+
+    
+}
 int main()
 {
 
@@ -210,8 +212,19 @@ int main()
 
         break;
         case 2:
+            char nome_arquivo[256];
+            scanf("%s",nome_arquivo);
 
+            recuperar_registros(nome_arquivo);
         break;
+        case 3:
+            char nome_arquivo[256];
+            scanf("%s",nome_arquivo);
+
+            recuperar_arquivos_condicional(nome_arquivo);
+
+
+
     }
     
    

@@ -1,6 +1,10 @@
 #ifndef REGISTRO
 #define REGISTRO
 
+#include <stdio.h>
+
+
+
 //campos de tamanho fixo com valores nulos devem ser representados pelo valor -1
 //campos de tamanho variavel com valores nulos tem tamanho 0 no indicador de tamanho
 typedef struct reg_dados{ // 80 bytes
@@ -18,5 +22,8 @@ typedef struct reg_dados{ // 80 bytes
     char* nomeLinha;
    
 }reg_dados;
+
+void escrever_dados(reg_dados *rg, FILE *out);
+void imprimir_registro(reg_dados *rg);
 
 #endif

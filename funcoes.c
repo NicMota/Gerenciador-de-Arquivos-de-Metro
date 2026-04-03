@@ -1,11 +1,31 @@
-#include "RegistroDados.h"
+#include "registro_dados.h"
+#include "cabecalho.h"
 #include <stdio.h>
 
 
+int procurar_nome_estacao(char* nome, char** nomes,int tam)
+{
+    for(int i = 0;i<tam;i++)
+    {
+        if(strcmp(nome,nomes[i])==0)
+            return 1;
+    }
+    return 0;
+}
+
+int procurar_par(par *p, par** pares, int tam)
+{
+    for(int i = 0;i<tam;i++)
+    {
+        if(p->codEstacao == pares[i]->codEstacao && p->codProxEstacao == pares[i]->codProxEstacao)
+            return 1;
+    }
+    return 0;
+}
 reg_dados* ler_dados(char* linha)
 {       
         reg_dados *rg = malloc(sizeof(reg_dados));
-        
+
         rg->removido = '0';
         rg->proximo = -1;
         rg->codEstacao = -1;

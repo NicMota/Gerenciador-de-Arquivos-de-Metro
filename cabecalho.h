@@ -1,9 +1,9 @@
 #ifndef CABECALHO
 #define CABECALHO
 
+#include <stdio.h>
 
-//campos de tamanho fixo com valores nulos devem ser representados pelo valor -1
-//campos de tamanho variavel com valores nulos tem tamanho 0 no indicador de tamanho
+
 typedef struct cabecalho{
     char status;
     int topo;
@@ -12,4 +12,13 @@ typedef struct cabecalho{
     int nParesEstação; 
 
 }cabecalho;
+
+typedef struct par{
+    int codEstacao;
+    int codProxEstacao;
+}par;
+
+
+void escrever_cabecalho(cabecalho *c, FILE *out);
+
 #endif
