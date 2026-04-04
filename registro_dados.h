@@ -25,5 +25,5 @@ typedef struct reg_dados{ // 80 bytes
 
 void escrever_dados(reg_dados *rg, FILE *out);
 void imprimir_registro(reg_dados *rg);
-
+reg_dados *ler_registro_bin(FILE *bin);
 #endif

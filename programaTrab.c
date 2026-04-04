@@ -33,7 +33,11 @@ void criarRegistros(char *arquivo_in, char* arquivo_out)
     FILE* arquivo = fopen(arquivo_in,"r");
     FILE* out = fopen(arquivo_out,"wb");
     if(arquivo == NULL || out == NULL)
+    {   
+        printf("Falha no processamento do arquivo.");
         return; //adicionar msg de erro
+    }
+        
 
     char linha[1024];
 
@@ -147,7 +151,7 @@ void recuperar_registros(char *nome_arquivo)
     FILE *arq = fopen(nome_arquivo,"rb");
     if(arq == NULL)
     {
-        printf("ERRO AO ABRIR ARQUIVO");
+        printf("Falha no processamento do arquivo.");
         return;
     }
     //pula cabecalho
@@ -155,42 +159,205 @@ void recuperar_registros(char *nome_arquivo)
 
     ;
     reg_dados *rg = malloc(sizeof(reg_dados));
-    while(fread(&rg->removido,sizeof(char),1,arq) == 1)
-    {
-        fread(&rg->proximo,sizeof(int),1,arq);
-        fread(&rg->codEstacao,sizeof(int),1,arq);
-        fread(&rg->codLinha,sizeof(int),1,arq);
-        fread(&rg->codProxEstacao,sizeof(int),1,arq);
-        fread(&rg->distProxEstacao,sizeof(int),1,arq);
-        fread(&rg->codLinhaIntegra,sizeof(int),1,arq);
-        fread(&rg->codEstIntegra,sizeof(int),1,arq);
-        fread(&rg->tamNomeEstacao,sizeof(int),1,arq);
-        rg->nomeEstacao = malloc(rg->tamNomeEstacao);
-        fread(rg->nomeEstacao,1,rg->tamNomeEstacao,arq);
-        
-        fread(&rg->tamNomeLinha,sizeof(int),1,arq);
-        rg->nomeLinha = malloc(rg->tamNomeLinha);
-        fread(rg->nomeLinha,1,rg->tamNomeLinha,arq);
+    while(1)
+    {   
+        rg = ler_registro_bin(arq);
+        if(rg == NULL)
+            break;
 
-        int bytes = 37 + rg->tamNomeEstacao + rg->tamNomeLinha;
-        fseek(arq, 80 - bytes, SEEK_CUR); // pula o lixo
+            
+      
         imprimir_registro(rg);
+        free(rg->nomeEstacao);
+        free(rg->nomeLinha);
+        free(rg);
     }
     
-    free(rg->nomeEstacao);
-    free(rg->nomeLinha);
-    free(rg);
+   
     
     fclose(arq);
 
 }
+reg_dados **busca(char campos[][50], char valores[][50],int m, FILE *arquivo)
+{   
 
-void recuperar_registros_condicional(char *nome_arquivo)
-{
-    FILE *arq = fopen(arq,"rb");
+    //pula cabecalho
+    fseek(arquivo,17,SEEK_SET);
 
+    reg_dados **resultados;
+    int n_resultados = 0;
+    reg_dados *rg;
+
+    while(1)
+    {   
+        rg = ler_registro_bin(arquivo);
+
+        if(rg==NULL)
+            break;
+        
+
+        int i;
+        for(i = 0;i<m;i++)
+        {   
+            
+            if(strcmp(campos[i],"codEstacao")==0)
+            {   
+                
+                int valor;
+                if(strcmp(valores[i],"NULO") == 0)
+                {
+                    valor = -1;
+                }else
+                {
+                    valor = atoi(valores[i]);   
+                }
+                
+                if(valor !=rg->codEstacao)  break;
+                
+            }else   
+            if(strcmp(campos[i],"codLinha")==0)
+            {
+                int valor;
+                if(strcmp(valores[i],"NULO") == 0)
+                {
+                    valor = -1;
+                }else
+                {
+                    valor = atoi(valores[i]);   
+                }
+                if(valor !=rg->codLinha)  break;
+            }else
+            if(strcmp(campos[i],"codProxEstacao")==0)
+            {
+                int valor;
+                if(strcmp(valores[i],"NULO") == 0)
+                {
+                    valor = -1;
+                }else
+                {
+                    valor = atoi(valores[i]);   
+                }
+                if(valor !=rg->codProxEstacao)  break;
+            }else
+            if(strcmp(campos[i],"distProxEstacao")==0)
+            {
+                int valor;
+                if(strcmp(valores[i],"NULO") == 0)
+                {
+                    valor = -1;
+                }else
+                {
+                    valor = atoi(valores[i]);   
+                }
+                if(valor !=rg->distProxEstacao)  break;
+            }else
+            if(strcmp(campos[i],"codLinhaIntegra")==0)
+            {
+                int valor;
+                if(strcmp(valores[i],"NULO") == 0)
+                {
+                    valor = -1;
+                }else
+                {
+                    valor = atoi(valores[i]);   
+                }
+                if(valor !=rg->codLinhaIntegra)  break;
+            }else
+            if(strcmp(campos[i],"codEstIntegra")==0)
+            {
+                int valor;
+                if(strcmp(valores[i],"NULO") == 0)
+                {
+                    valor = -1;
+                }else
+                {
+                    valor = atoi(valores[i]);   
+                }
+                if(valor !=rg->codEstIntegra)  break;
+            }else
+            if(strcmp(campos[i],"nomeEstacao")==0)
+            {
+                if(strcmp(valores[i],rg->nomeEstacao) != 0) break;
+            }else
+            if(strcmp(campos[i],"nomeLinha")==0)
+            {   
+                if(strcmp(valores[i],"NULO")==0)
+                {
+                    if(rg->tamNomeLinha != 0) break;
+                }else{
+                    
+                    if(strcmp(valores[i],rg->nomeLinha) != 0) break;
+               
+                }
+            }else
+            {   
+                printf("nome campo invalido");
+                return NULL;
+            }
+
+        }
+        if(i==m)
+        {   
+            
+            imprimir_registro(rg);
+            n_resultados++;
+        }
+
+        free(rg->nomeEstacao);
+        free(rg->nomeLinha);
+        free(rg);
+    }
+    if(n_resultados==0)
+    {
+        printf("Registro inexistente.\n");
+        return NULL;
+    }
     
 }
+void recuperar_registros_onde(char *nome_arquivo, int n)
+{       
+
+    FILE *arq = fopen(nome_arquivo,"rb");
+    if(arq == NULL)
+    {
+        printf("ERRO AO ABRIR ARQUIVO");
+        return;
+    }
+    
+    for(int i = 0;i<n;i++)
+    {
+        int m; scanf("%d",&m);
+
+        char campos[m][50]; 
+        char valores[m][50];
+
+        for(int i = 0;i<m;i++)
+        {   
+            scanf("%s",campos[i]);
+            if(strcmp(campos[i],"nomeLinha") == 0 || strcmp(campos[i],"nomeEstacao") == 0)
+            {
+                ScanQuoteString(valores[i]);
+            }else
+            {
+                scanf("%s",valores[i]);
+            }
+            valores[i][strcspn(valores[i], "\r\n")] = '\0';
+
+        }
+
+        reg_dados **resultados = busca(campos,valores,m,arq);
+        printf("\n");
+
+        
+    }
+    fclose(arq);
+
+
+}
+
+
+
+
 int main()
 {
 
@@ -218,10 +385,15 @@ int main()
             recuperar_registros(nome_arquivo);
         break;
         case 3:
-            char nome_arquivo[256];
-            scanf("%s",nome_arquivo);
+            char nome_arquivo_busca[256];
+            scanf("%s",nome_arquivo_busca);
 
-            recuperar_arquivos_condicional(nome_arquivo);
+            int n;  scanf("%d", &n);
+
+            
+            recuperar_registros_onde(nome_arquivo_busca, n);
+
+            break;
 
 
 

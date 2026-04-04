@@ -123,6 +123,3 @@ reg_dados* ler_dados(char* linha)
         return rg;
 }
 
-void adicionarRegistro(FILE *destino){
-    
-}
