@@ -31,8 +31,6 @@ int busca(char campos[][50], char valores[][50],int m, FILE *arquivo)
 
     //pula cabecalho
     fseek(arquivo,17,SEEK_SET);
-
-    reg_dados **resultados;
     int n_resultados = 0;
     reg_dados *rg;
 
@@ -146,6 +144,7 @@ int busca(char campos[][50], char valores[][50],int m, FILE *arquivo)
                 }
             }else
             {   
+                
                 printf("nome campo invalido");
                 return n_resultados;
             }
@@ -153,18 +152,18 @@ int busca(char campos[][50], char valores[][50],int m, FILE *arquivo)
         }
         if(i==m)
         {   
-            
             imprimir_registro(rg);
             n_resultados++;
         }
 
-        return n_resultados;
+      
       
     }
     if(n_resultados==0)
     {
         printf("Registro inexistente.\n");
-        return n_resultados;
+        
     }
+    return n_resultados;
     
 }

@@ -142,7 +142,7 @@ void recuperar_registros(char *nome_arquivo)
         if(rg == NULL)
             break;
         if(rg->removido=='1')
-        {
+        {   
             free(rg->nomeEstacao);
             free(rg->nomeLinha);
             free(rg);
@@ -165,7 +165,7 @@ void recuperar_registros_onde(char *nome_arquivo, int n)
     FILE *arq = fopen(nome_arquivo,"rb");
     if(arq == NULL)
     {
-        printf("ERRO AO ABRIR ARQUIVO");
+        printf("Falha no processamento do arquivo.\n");
         return;
     }
     
@@ -186,11 +186,12 @@ void recuperar_registros_onde(char *nome_arquivo, int n)
             {
                 scanf("%s",valores[i]);
             }
-            valores[i][strcspn(valores[i], "\r\n")] = '\0';
+
+            
 
         }
 
-        busca(campos,valores,m,arq);
+        int n = busca(campos,valores,m,arq);
         printf("\n");
 
         
