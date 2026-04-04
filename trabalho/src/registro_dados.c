@@ -25,6 +25,7 @@ reg_dados *ler_registro_bin(FILE *bin)
     if(fread(&rg->removido,sizeof(char),1,bin)!=1)
         return NULL; 
 
+    
     fread(&rg->proximo,sizeof(int),1,bin);
     fread(&rg->codEstacao,sizeof(int),1,bin);
     fread(&rg->codLinha,sizeof(int),1,bin);

@@ -65,7 +65,7 @@ void criarRegistros(char *arquivo_in, char* arquivo_out)
        
         reg_dados *rg = ler_dados(linha);
 
-        
+
         if(!procurar_nome_estacao(rg->nomeEstacao,nomes_estacao,qtdNomes))
         {   
             nomes_estacao[qtdNomes] = malloc(strlen(rg->nomeEstacao)+1);
@@ -164,13 +164,16 @@ void recuperar_registros(char *nome_arquivo)
         rg = ler_registro_bin(arq);
         if(rg == NULL)
             break;
-
-            
+        if(rg->removido=='1')
+        {
+            free(rg->nomeEstacao);
+            free(rg->nomeLinha);
+            free(rg);
+            continue;
+        }
       
         imprimir_registro(rg);
-        free(rg->nomeEstacao);
-        free(rg->nomeLinha);
-        free(rg);
+        
     }
     
    
@@ -194,7 +197,14 @@ reg_dados **busca(char campos[][50], char valores[][50],int m, FILE *arquivo)
 
         if(rg==NULL)
             break;
-        
+
+        if(rg->removido=='1')
+        {
+            free(rg->nomeEstacao);
+            free(rg->nomeLinha);
+            free(rg);
+            continue;
+        }
 
         int i;
         for(i = 0;i<m;i++)
@@ -303,9 +313,7 @@ reg_dados **busca(char campos[][50], char valores[][50],int m, FILE *arquivo)
             n_resultados++;
         }
 
-        free(rg->nomeEstacao);
-        free(rg->nomeLinha);
-        free(rg);
+      
     }
     if(n_resultados==0)
     {
