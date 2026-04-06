@@ -9,8 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define FALHA_MSG "Falha no processamento do arquivo"
+#include <strings.h>
 
 static int seek_rrn(FILE *arquivo, int rrn) {
     long offset = CABECALHO_SZ + (long)rrn * REGISTRO_SZ;
@@ -46,6 +45,9 @@ static void trim_token(char *s) {
 }
 
 static int parse_inteiro(const char *token) {
+    if (token == NULL || token[0] == '\0') {
+        return -1;
+    }
     if (parse_valor_nulo_fixo(token)) {
         return -1;
     }
@@ -92,7 +94,7 @@ static int linha_csv_para_campos(char *linha, registro_campos *campos) {
         trim_token(tokens[i]);
     }
 
-    if (strcmp(tokens[0], "codEstacao") == 0 || strcmp(tokens[0], "codestacao") == 0) {
+    if (strcasecmp(tokens[0], "codestacao") == 0) {
         return 2;
     }
 
@@ -156,16 +158,6 @@ static int abrir_binario_escrita(const char *nome, FILE **arquivo, cabecalho *c)
     return 1;
 }
 
-static int vetor_int_contem(const int *vetor, int n, int valor) {
-    int i;
-    for (i = 0; i < n; i++) {
-        if (vetor[i] == valor) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 static int vetor_pares_contem(const par *vetor, int n, int codEstacao, int codProxEstacao) {
     int i;
     for (i = 0; i < n; i++) {
@@ -176,39 +168,70 @@ static int vetor_pares_contem(const par *vetor, int n, int codEstacao, int codPr
     return 0;
 }
 
+static int nome_estacao_contido(char (*nomes)[80], int n, const char *nome) {
+    int i;
+    for (i = 0; i < n; i++) {
+        if (strcmp(nomes[i], nome) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static int recalcular_estatisticas(FILE *arquivo, cabecalho *c) {
-    int *estacoes = NULL;
+    char (*nomesEstacao)[80] = NULL;
+    int *codigosPorNome = NULL;
     par *pares = NULL;
-    int capEstacoes = 0;
+    int capNomes = 0;
     int capPares = 0;
-    int nEstacoes = 0;
+    int nNomes = 0;
     int nPares = 0;
     int rrn;
+    int i;
+    int homonimos = 0;
 
     for (rrn = 0; rrn < c->proxRRN; rrn++) {
         reg_dados r;
         if (!seek_rrn(arquivo, rrn) || !ler_registro(arquivo, &r)) {
-            free(estacoes);
+            free(nomesEstacao);
+            free(codigosPorNome);
             free(pares);
             return 0;
         }
-        if (r.removido == '0') {
+        if (r.removido == '1') {
             continue;
         }
 
-        if (r.codEstacao != -1 && !vetor_int_contem(estacoes, nEstacoes, r.codEstacao)) {
-            if (nEstacoes == capEstacoes) {
-                int novoCap = capEstacoes == 0 ? 16 : capEstacoes * 2;
-                int *novo = (int *)realloc(estacoes, (size_t)novoCap * sizeof(int));
-                if (novo == NULL) {
-                    free(estacoes);
-                    free(pares);
-                    return 0;
+        if (r.tamNomeEstacao > 0 && r.nomeEstacao[0] != '\0') {
+            if (!nome_estacao_contido(nomesEstacao, nNomes, r.nomeEstacao)) {
+                if (nNomes == capNomes) {
+                    int novoCap = capNomes == 0 ? 16 : capNomes * 2;
+                    char (*novoN)[80] =
+                        (char (*)[80])realloc(nomesEstacao, (size_t)novoCap * sizeof(*novoN));
+                    int *novoC = (int *)realloc(codigosPorNome, (size_t)novoCap * sizeof(int));
+                    if (novoN == NULL || novoC == NULL) {
+                        free(nomesEstacao);
+                        free(codigosPorNome);
+                        free(pares);
+                        return 0;
+                    }
+                    nomesEstacao = novoN;
+                    codigosPorNome = novoC;
+                    capNomes = novoCap;
                 }
-                estacoes = novo;
-                capEstacoes = novoCap;
+                strncpy(nomesEstacao[nNomes], r.nomeEstacao, sizeof(nomesEstacao[nNomes]) - 1);
+                nomesEstacao[nNomes][sizeof(nomesEstacao[nNomes]) - 1] = '\0';
+                codigosPorNome[nNomes] = r.codEstacao;
+                nNomes++;
+            } else {
+                for (i = 0; i < nNomes; i++) {
+                    if (strcmp(nomesEstacao[i], r.nomeEstacao) == 0 &&
+                        codigosPorNome[i] != r.codEstacao) {
+                        homonimos = 1;
+                        break;
+                    }
+                }
             }
-            estacoes[nEstacoes++] = r.codEstacao;
         }
 
         if (r.codEstacao != -1 && r.codProxEstacao != -1 &&
@@ -217,7 +240,8 @@ static int recalcular_estatisticas(FILE *arquivo, cabecalho *c) {
                 int novoCap = capPares == 0 ? 16 : capPares * 2;
                 par *novo = (par *)realloc(pares, (size_t)novoCap * sizeof(par));
                 if (novo == NULL) {
-                    free(estacoes);
+                    free(nomesEstacao);
+                    free(codigosPorNome);
                     free(pares);
                     return 0;
                 }
@@ -230,9 +254,10 @@ static int recalcular_estatisticas(FILE *arquivo, cabecalho *c) {
         }
     }
 
-    c->nroEstacoes = nEstacoes;
+    c->nroEstacoes = nNomes + (homonimos ? 1 : 0);
     c->nroParesEstacao = nPares;
-    free(estacoes);
+    free(nomesEstacao);
+    free(codigosPorNome);
     free(pares);
     return 1;
 }
@@ -286,11 +311,11 @@ static int remover_registro(FILE *arquivo, cabecalho *c, int rrn) {
     if (!seek_rrn(arquivo, rrn) || !ler_registro(arquivo, &r)) {
         return 0;
     }
-    if (r.removido == '0') {
+    if (r.removido == '1') {
         return 1;
     }
 
-    r.removido = '0';
+    r.removido = '1';
     r.proximo = c->topo;
     c->topo = rrn;
     if (!seek_rrn(arquivo, rrn) || !escrever_registro(arquivo, &r)) {
@@ -331,14 +356,14 @@ int funcionalidade_1(const char *csv_entrada, const char *bin_saida) {
     int primeiraLinha = 1;
 
     if (csv == NULL) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
 
     bin = fopen(bin_saida, "w+b");
     if (bin == NULL) {
         fclose(csv);
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
 
@@ -346,7 +371,7 @@ int funcionalidade_1(const char *csv_entrada, const char *bin_saida) {
     if (!escrever_cabecalho(bin, &c)) {
         fclose(csv);
         fclose(bin);
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
 
@@ -369,7 +394,7 @@ int funcionalidade_1(const char *csv_entrada, const char *bin_saida) {
             if (statusLinha != 1) {
                 fclose(csv);
                 fclose(bin);
-                printf(FALHA_MSG "\n");
+                printf(FALHA_MSG);
                 return 0;
             }
         }
@@ -380,14 +405,14 @@ int funcionalidade_1(const char *csv_entrada, const char *bin_saida) {
         if (!inserir_registro(bin, &c, &r)) {
             fclose(csv);
             fclose(bin);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
     }
 
     fclose(csv);
     if (!finalizar_escrita(bin, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
     BinarioNaTela((char *)bin_saida);
@@ -400,7 +425,7 @@ int funcionalidade_2(const char *bin) {
     int rrn;
 
     if (!abrir_binario_leitura(bin, &arquivo, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
 
@@ -408,10 +433,10 @@ int funcionalidade_2(const char *bin) {
         reg_dados r;
         if (!seek_rrn(arquivo, rrn) || !ler_registro(arquivo, &r)) {
             fclose(arquivo);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
-        if (r.removido == '0') {
+        if (r.removido == '1') {
             continue;
         }
         imprimir_registro_saida(&r);
@@ -427,11 +452,14 @@ int funcionalidade_3(const char *bin, int n) {
     int i;
 
     if (!abrir_binario_leitura(bin, &arquivo, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
 
     for (i = 0; i < n; i++) {
+        if (i > 0) {
+            printf("\n");
+        }
         int m;
         int rrn;
         int encontrou = 0;
@@ -439,12 +467,12 @@ int funcionalidade_3(const char *bin, int n) {
 
         if (scanf("%d", &m) != 1 || m <= 0 || m > MAX_CRITERIOS) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         if (!ler_criterios_da_entrada(m, criterios)) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
 
@@ -452,10 +480,10 @@ int funcionalidade_3(const char *bin, int n) {
             reg_dados r;
             if (!seek_rrn(arquivo, rrn) || !ler_registro(arquivo, &r)) {
                 fechar_em_falha(arquivo, &c);
-                printf(FALHA_MSG "\n");
+                printf(FALHA_MSG);
                 return 0;
             }
-            if (r.removido == '0') {
+            if (r.removido == '1') {
                 continue;
             }
             if (registro_casa_criterios_and(&r, criterios, m)) {
@@ -468,6 +496,7 @@ int funcionalidade_3(const char *bin, int n) {
         }
     }
 
+    printf("\n");
     fclose(arquivo);
     return 1;
 }
@@ -478,7 +507,7 @@ int funcionalidade_4(const char *bin, int n) {
     int i;
 
     if (!abrir_binario_escrita(bin, &arquivo, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
 
@@ -489,12 +518,12 @@ int funcionalidade_4(const char *bin, int n) {
 
         if (scanf("%d", &m) != 1 || m <= 0 || m > MAX_CRITERIOS) {
             fclose(arquivo);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         if (!ler_criterios_da_entrada(m, criterios)) {
             fclose(arquivo);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
 
@@ -502,16 +531,16 @@ int funcionalidade_4(const char *bin, int n) {
             reg_dados r;
             if (!seek_rrn(arquivo, rrn) || !ler_registro(arquivo, &r)) {
                 fclose(arquivo);
-                printf(FALHA_MSG "\n");
+                printf(FALHA_MSG);
                 return 0;
             }
-            if (r.removido == '0') {
+            if (r.removido == '1') {
                 continue;
             }
             if (registro_casa_criterios_and(&r, criterios, m)) {
                 if (!remover_registro(arquivo, &c, rrn)) {
                     fechar_em_falha(arquivo, &c);
-                    printf(FALHA_MSG "\n");
+                    printf(FALHA_MSG);
                     return 0;
                 }
             }
@@ -519,7 +548,7 @@ int funcionalidade_4(const char *bin, int n) {
     }
 
     if (!finalizar_escrita(arquivo, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
     BinarioNaTela((char *)bin);
@@ -532,7 +561,7 @@ int funcionalidade_5(const char *bin, int n) {
     int i;
 
     if (!abrir_binario_escrita(bin, &arquivo, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
 
@@ -545,56 +574,56 @@ int funcionalidade_5(const char *bin, int n) {
 
         if (!ler_token_custom(tok, sizeof(tok))) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         campos.codEstacao = parse_inteiro(tok);
 
         if (!ler_token_custom(tok, sizeof(tok))) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         parse_string(campos.nomeEstacao, sizeof(campos.nomeEstacao), tok);
 
         if (!ler_token_custom(tok, sizeof(tok))) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         campos.codLinha = parse_inteiro(tok);
 
         if (!ler_token_custom(tok, sizeof(tok))) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         parse_string(campos.nomeLinha, sizeof(campos.nomeLinha), tok);
 
         if (!ler_token_custom(tok, sizeof(tok))) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         campos.codProxEstacao = parse_inteiro(tok);
 
         if (!ler_token_custom(tok, sizeof(tok))) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         campos.distProxEstacao = parse_inteiro(tok);
 
         if (!ler_token_custom(tok, sizeof(tok))) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         campos.codLinhaIntegra = parse_inteiro(tok);
 
         if (!ler_token_custom(tok, sizeof(tok))) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         campos.codEstIntegra = parse_inteiro(tok);
@@ -603,13 +632,13 @@ int funcionalidade_5(const char *bin, int n) {
         preencher_registro(&r, &campos);
         if (!inserir_registro(arquivo, &c, &r)) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
     }
 
     if (!finalizar_escrita(arquivo, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
     BinarioNaTela((char *)bin);
@@ -622,7 +651,7 @@ int funcionalidade_6(const char *bin, int n) {
     int i;
 
     if (!abrir_binario_escrita(bin, &arquivo, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
 
@@ -635,22 +664,22 @@ int funcionalidade_6(const char *bin, int n) {
 
         if (scanf("%d", &m) != 1 || m <= 0 || m > MAX_CRITERIOS) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         if (!ler_criterios_da_entrada(m, criterios)) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         if (scanf("%d", &p) != 1 || p <= 0 || p > MAX_CRITERIOS) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
         if (!ler_criterios_da_entrada(p, updates)) {
             fechar_em_falha(arquivo, &c);
-            printf(FALHA_MSG "\n");
+            printf(FALHA_MSG);
             return 0;
         }
 
@@ -661,10 +690,10 @@ int funcionalidade_6(const char *bin, int n) {
 
             if (!seek_rrn(arquivo, rrn) || !ler_registro(arquivo, &r)) {
                 fechar_em_falha(arquivo, &c);
-                printf(FALHA_MSG "\n");
+                printf(FALHA_MSG);
                 return 0;
             }
-            if (r.removido == '0' || !registro_casa_criterios_and(&r, criterios, m)) {
+            if (r.removido == '1' || !registro_casa_criterios_and(&r, criterios, m)) {
                 continue;
             }
 
@@ -675,14 +704,14 @@ int funcionalidade_6(const char *bin, int n) {
             preencher_registro(&r, &campos);
             if (!atualizar_registro_inplace(arquivo, rrn, &r)) {
                 fechar_em_falha(arquivo, &c);
-                printf(FALHA_MSG "\n");
+                printf(FALHA_MSG);
                 return 0;
             }
         }
     }
 
     if (!finalizar_escrita(arquivo, &c)) {
-        printf(FALHA_MSG "\n");
+        printf(FALHA_MSG);
         return 0;
     }
     BinarioNaTela((char *)bin);

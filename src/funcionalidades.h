@@ -1,6 +1,8 @@
 #ifndef FUNCIONALIDADES
 #define FUNCIONALIDADES
 
+#define FALHA_MSG "Falha no processamento do arquivo.\n"
+
 /*
     FUNCIONALIDADE [1] CREATE TABLE
 

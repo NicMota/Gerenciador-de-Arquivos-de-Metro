@@ -6,7 +6,7 @@
 reg_dados criar_registro_nulo(void) {
     reg_dados r;
     memset(&r, 0, sizeof(reg_dados));
-    r.removido = '1';
+    r.removido = '0';
     r.proximo = -1;
     r.codEstacao = -1;
     r.codLinha = -1;
