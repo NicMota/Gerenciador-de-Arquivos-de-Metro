@@ -3,32 +3,40 @@
 
 #include <stdio.h>
 
+#define CABECALHO_SZ 17
 
-typedef struct cabecalho{
+/*
+    Registro de cabecalho do arquivo binario (17 bytes).
+*/
+typedef struct cabecalho {
     char status;
     int topo;
     int proxRRN;
-    int nEstacoes;
-    int nParesEstacao; 
+    int nroEstacoes;
+    int nroParesEstacao;
+} cabecalho;
 
-}cabecalho;
-
-typedef struct par{
+/*
+    Par (codEstacao, codProxEstacao), usado para contagem de pares distintos.
+*/
+typedef struct par {
     int codEstacao;
     int codProxEstacao;
-}par;
+} par;
 
 /*
-    cria um cabecalho e o retorna
+    Cria um cabecalho inicial consistente com valores padrao.
 */
-cabecalho *criar_cabecalho(char status, int topo, int proxRRN, int nEstacoes, int nParesEstacao);
+cabecalho criar_cabecalho(void);
 
 /*
-    escreve um cabecalho no começo do arquivo de saida
-
-    c: cabecalho a ser escrito
-    out: arquivo de saida
+    Le o cabecalho do arquivo.
 */
-void escrever_cabecalho(cabecalho *c, FILE *out);
+int ler_cabecalho(FILE *arquivo, cabecalho *c);
+
+/*
+    Escreve o cabecalho no inicio do arquivo.
+*/
+int escrever_cabecalho(FILE *arquivo, const cabecalho *c);
 
 #endif

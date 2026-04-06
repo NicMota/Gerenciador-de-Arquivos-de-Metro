@@ -1,209 +1,177 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "registro_dados.h"
 
-void escrever_dados(reg_dados *rg,FILE* out)
-{
-    fwrite(&rg->removido,1,1,out);
-    fwrite(&rg->proximo,sizeof(int),1,out);
-    fwrite(&rg->codEstacao,sizeof(int),1,out);
-    fwrite(&rg->codLinha,sizeof(int),1,out);
-    fwrite(&rg->codProxEstacao,sizeof(int),1,out);
-    fwrite(&rg->distProxEstacao,sizeof(int),1,out);
-    fwrite(&rg->codLinhaIntegra,sizeof(int),1,out);
-    fwrite(&rg->codEstIntegra,sizeof(int),1,out);
-    fwrite(&rg->tamNomeEstacao,sizeof(int),1,out);
-    fwrite(rg->nomeEstacao,1,rg->tamNomeEstacao,out);
-    fwrite(&rg->tamNomeLinha,sizeof(int),1,out);
-    fwrite(rg->nomeLinha,1,rg->tamNomeLinha,out);
+#include "cabecalho.h"
+#include <string.h>
+
+reg_dados criar_registro_nulo(void) {
+    reg_dados r;
+    memset(&r, 0, sizeof(reg_dados));
+    r.removido = '0';
+    r.proximo = -1;
+    r.codEstacao = -1;
+    r.codLinha = -1;
+    r.codProxEstacao = -1;
+    r.distProxEstacao = -1;
+    r.codLinhaIntegra = -1;
+    r.codEstIntegra = -1;
+    r.tamNomeEstacao = 0;
+    r.tamNomeLinha = 0;
+    r.nomeEstacao[0] = '\0';
+    r.nomeLinha[0] = '\0';
+    return r;
 }
 
-reg_dados* criar_registro
-( 
-    char removido,
-    int proximo,
-    int codEstacao, //not null
-    int codLinha,
-    int codProxEstacao,
-    int distProxEstacao,
-    int codLinhaIntegra,
-    int codEstIntegra,
-    int tamNomeEstacao,
-    char* nomeEstacao, //not null
-    int tamNomeLinha,   
-    char* nomeLinha
-){
-
-    reg_dados *rg = malloc(sizeof(reg_dados));
-
-    rg->removido = removido;;
-    rg->proximo = proximo;
-    rg->codEstacao = codEstacao;
-    rg->codLinha = codLinha;
-    rg->codProxEstacao = codProxEstacao;
-    rg->distProxEstacao = distProxEstacao;
-    rg->codLinhaIntegra = codLinhaIntegra;
-    rg->codEstIntegra = codEstIntegra;
-    rg->tamNomeEstacao = tamNomeEstacao;
-    rg->nomeEstacao = nomeEstacao;
-    rg->tamNomeLinha = tamNomeLinha;
-    rg->nomeLinha = nomeLinha;
-
-}
-
-
-
-reg_dados* ler_dados(char* linha)
-{       
-        reg_dados *rg = criar_registro('0',-1,-1,-1,-1,-1,-1,-1,0,NULL,0,NULL);
-        int i = 0;
-       
-        char *campos;
-        while( (campos = strsep(&linha,",") )!= NULL && i<8){
-           
-            
-            campos[strcspn(campos, "\r\n")] = '\0';
-            
-            //tratar campos com valores nulos
-            switch (i)
-            {
-            case 0:
-                if(strlen(campos)==0)
-                {
-                    printf("COD ESTAÇÃO NÃO PODE SER NULO");
-                    free(rg);
-                    return NULL;
-                }
-                    
-                rg->codEstacao = atoi(campos);
-                break;
-            case 1:
-                if(strlen(campos)>0){
-                    rg->tamNomeEstacao = strlen(campos);
-                    rg->nomeEstacao = malloc(rg->tamNomeEstacao+1);
-                    strcpy(rg->nomeEstacao,campos);
-                    break;
-                } else {
-                    free(rg);
-                    printf("NOME ESTACAO NÃO PODE SER NULO");
-                    return NULL;
-                }
-                    
-            case 2:
-
-                rg->codLinha = atoi(campos);
-                break;
-
-            case 3:
-                if(strlen(campos)>0){
-                    rg->tamNomeLinha = strlen(campos);
-                    rg->nomeLinha = malloc(rg->tamNomeLinha+1);
-
-                    strcpy(rg->nomeLinha,campos);
-                    break;  
-                }else{
-                    rg->tamNomeLinha = 0;
-                }
-            case 4:
-                
-                if(strlen(campos) > 0) rg->codProxEstacao = atoi(campos);
-                break;
-            case 5:
-                if(strlen(campos) > 0) rg->distProxEstacao = atoi(campos);
-                break;
-
-            case 6:
-
-                if(strlen(campos) > 0) rg->codLinhaIntegra = atoi(campos);
-                break;
-
-            case 7:
-                
-                if(strlen(campos) > 0) rg->codEstIntegra =  atoi(campos);
-                break;
-            
-            default:
-                break;
-            }
-            
-            
-            i++;
-            
-           
-        }
-        return rg;
-}
-reg_dados *ler_registro_bin(FILE *bin)
-{       
-    reg_dados *rg = malloc(sizeof(reg_dados));
-
-    if(fread(&rg->removido,sizeof(char),1,bin)!=1)
-        return NULL; 
-
-    
-    fread(&rg->proximo,sizeof(int),1,bin);
-    fread(&rg->codEstacao,sizeof(int),1,bin);
-    fread(&rg->codLinha,sizeof(int),1,bin);
-    fread(&rg->codProxEstacao,sizeof(int),1,bin);
-    fread(&rg->distProxEstacao,sizeof(int),1,bin);
-    fread(&rg->codLinhaIntegra,sizeof(int),1,bin);
-    fread(&rg->codEstIntegra,sizeof(int),1,bin);
-    fread(&rg->tamNomeEstacao,sizeof(int),1,bin);
-
-    if(rg->tamNomeEstacao>0){
-        rg->nomeEstacao = malloc(rg->tamNomeEstacao+1);
-        fread(rg->nomeEstacao,1,rg->tamNomeEstacao,bin);
-        rg->nomeEstacao[rg->tamNomeEstacao] = '\0';
+void preencher_registro(reg_dados *r, const registro_campos *campos) {
+    if (r == NULL || campos == NULL) {
+        return;
     }
-    fread(&rg->tamNomeLinha,sizeof(int),1,bin);
 
-    if(rg->tamNomeLinha){
-        rg->nomeLinha = malloc(rg->tamNomeLinha);
-        fread(rg->nomeLinha,1,rg->tamNomeLinha,bin);
-        rg->nomeLinha[rg->tamNomeLinha] = '\0';
+    *r = criar_registro_nulo();
+    r->codEstacao = campos->codEstacao;
+    r->codLinha = campos->codLinha;
+    r->codProxEstacao = campos->codProxEstacao;
+    r->distProxEstacao = campos->distProxEstacao;
+    r->codLinhaIntegra = campos->codLinhaIntegra;
+    r->codEstIntegra = campos->codEstIntegra;
+    if (campos->nomeEstacao[0] != '\0') {
+        strncpy(r->nomeEstacao, campos->nomeEstacao, sizeof(r->nomeEstacao) - 1);
+        r->nomeEstacao[sizeof(r->nomeEstacao) - 1] = '\0';
+        r->tamNomeEstacao = (int)strlen(r->nomeEstacao);
     }
-    int bytes = 37 + rg->tamNomeEstacao + rg->tamNomeLinha;
-    fseek(bin, 80 - bytes, SEEK_CUR); // pula o lixo
-    return rg;
+    if (campos->nomeLinha[0] != '\0') {
+        strncpy(r->nomeLinha, campos->nomeLinha, sizeof(r->nomeLinha) - 1);
+        r->nomeLinha[sizeof(r->nomeLinha) - 1] = '\0';
+        r->tamNomeLinha = (int)strlen(r->nomeLinha);
+    }
 }
-void imprimir_registro(reg_dados *rg)
-{   
 
+void extrair_campos_registro(const reg_dados *r, registro_campos *campos) {
+    if (r == NULL || campos == NULL) {
+        return;
+    }
 
-    printf("%d",rg->codEstacao);
-    printf(" %s", rg->nomeEstacao);
-    if(rg->codLinha!=-1)
-        printf(" %d",rg->codLinha);
-    else
-        printf(" NULO");
-    
-    if(rg->tamNomeLinha != 0)
-        printf(" %s",rg->nomeLinha);
-    else 
-        printf(" NULO");
+    memset(campos, 0, sizeof(registro_campos));
+    campos->codEstacao = r->codEstacao;
+    campos->codLinha = r->codLinha;
+    campos->codProxEstacao = r->codProxEstacao;
+    campos->distProxEstacao = r->distProxEstacao;
+    campos->codLinhaIntegra = r->codLinhaIntegra;
+    campos->codEstIntegra = r->codEstIntegra;
+    if (r->tamNomeEstacao > 0) {
+        strncpy(campos->nomeEstacao, r->nomeEstacao, sizeof(campos->nomeEstacao) - 1);
+        campos->nomeEstacao[sizeof(campos->nomeEstacao) - 1] = '\0';
+    }
+    if (r->tamNomeLinha > 0) {
+        strncpy(campos->nomeLinha, r->nomeLinha, sizeof(campos->nomeLinha) - 1);
+        campos->nomeLinha[sizeof(campos->nomeLinha) - 1] = '\0';
+    }
+}
 
+int escrever_registro(FILE *arquivo, const reg_dados *r) {
+    int bytes;
+    char lixo = '$';
 
-    if(rg->codProxEstacao!=-1)
-        printf(" %d",rg->codProxEstacao);
-    else
-        printf(" NULO");
-    if(rg->distProxEstacao!=-1)
-        printf(" %d",rg->distProxEstacao);
-    else
-        printf(" NULO");
-    if(rg->codLinhaIntegra!=-1)
-        printf(" %d",rg->codLinhaIntegra);
-    else
-        printf(" NULO");
-    if(rg->codEstIntegra!=-1)
-        printf(" %d",rg->codEstIntegra);
-    else
-        printf(" NULO");
+    if (arquivo == NULL || r == NULL) {
+        return 0;
+    }
 
-    printf("\n");
-   
-    
+    if (fwrite(&r->removido, sizeof(char), 1, arquivo) != 1) return 0;
+    if (fwrite(&r->proximo, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fwrite(&r->codEstacao, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fwrite(&r->codLinha, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fwrite(&r->codProxEstacao, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fwrite(&r->distProxEstacao, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fwrite(&r->codLinhaIntegra, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fwrite(&r->codEstIntegra, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fwrite(&r->tamNomeEstacao, sizeof(int), 1, arquivo) != 1) return 0;
+    if (r->tamNomeEstacao > 0) {
+        if (fwrite(r->nomeEstacao, sizeof(char), (size_t)r->tamNomeEstacao, arquivo) !=
+            (size_t)r->tamNomeEstacao)
+            return 0;
+    }
+    if (fwrite(&r->tamNomeLinha, sizeof(int), 1, arquivo) != 1) return 0;
+    if (r->tamNomeLinha > 0) {
+        if (fwrite(r->nomeLinha, sizeof(char), (size_t)r->tamNomeLinha, arquivo) !=
+            (size_t)r->tamNomeLinha)
+            return 0;
+    }
 
-    
+    bytes = 37 + r->tamNomeEstacao + r->tamNomeLinha;
+    while (bytes < REGISTRO_SZ) {
+        if (fwrite(&lixo, sizeof(char), 1, arquivo) != 1) return 0;
+        bytes++;
+    }
+    return 1;
+}
+
+int ler_registro(FILE *arquivo, reg_dados *r) {
+    int bytes;
+
+    if (arquivo == NULL || r == NULL) {
+        return 0;
+    }
+
+    *r = criar_registro_nulo();
+    if (fread(&r->removido, sizeof(char), 1, arquivo) != 1) return 0;
+    if (fread(&r->proximo, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fread(&r->codEstacao, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fread(&r->codLinha, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fread(&r->codProxEstacao, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fread(&r->distProxEstacao, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fread(&r->codLinhaIntegra, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fread(&r->codEstIntegra, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fread(&r->tamNomeEstacao, sizeof(int), 1, arquivo) != 1) return 0;
+    if (r->tamNomeEstacao > 0) {
+        if (r->tamNomeEstacao >= (int)sizeof(r->nomeEstacao)) return 0;
+        if (fread(r->nomeEstacao, sizeof(char), (size_t)r->tamNomeEstacao, arquivo) !=
+            (size_t)r->tamNomeEstacao)
+            return 0;
+        r->nomeEstacao[r->tamNomeEstacao] = '\0';
+    }
+    if (fread(&r->tamNomeLinha, sizeof(int), 1, arquivo) != 1) return 0;
+    if (r->tamNomeLinha > 0) {
+        if (r->tamNomeLinha >= (int)sizeof(r->nomeLinha)) return 0;
+        if (fread(r->nomeLinha, sizeof(char), (size_t)r->tamNomeLinha, arquivo) !=
+            (size_t)r->tamNomeLinha)
+            return 0;
+        r->nomeLinha[r->tamNomeLinha] = '\0';
+    }
+
+    bytes = 37 + r->tamNomeEstacao + r->tamNomeLinha;
+    if (bytes < REGISTRO_SZ) {
+        fseek(arquivo, REGISTRO_SZ - bytes, SEEK_CUR);
+    }
+    return 1;
+}
+
+void imprimir_registro_saida(const reg_dados *r) {
+    registro_campos c;
+
+    extrair_campos_registro(r, &c);
+
+    if (c.codEstacao == -1) printf("NULO ");
+    else printf("%d ", c.codEstacao);
+    if (c.nomeEstacao[0] == '\0') printf("NULO ");
+    else printf("%s ", c.nomeEstacao);
+    if (c.codLinha == -1) printf("NULO ");
+    else printf("%d ", c.codLinha);
+    if (c.nomeLinha[0] == '\0') printf("NULO ");
+    else printf("%s ", c.nomeLinha);
+    if (c.codProxEstacao == -1) printf("NULO ");
+    else printf("%d ", c.codProxEstacao);
+    if (c.distProxEstacao == -1) printf("NULO ");
+    else printf("%d ", c.distProxEstacao);
+    if (c.codLinhaIntegra == -1) printf("NULO ");
+    else printf("%d ", c.codLinhaIntegra);
+    if (c.codEstIntegra == -1) printf("NULO\n");
+    else printf("%d\n", c.codEstIntegra);
+}
+
+int atualizar_registro_inplace(FILE *arquivo, int rrn, const reg_dados *r) {
+    long long offset = (long long)CABECALHO_SZ + (long long)rrn * REGISTRO_SZ;
+    if (arquivo == NULL || r == NULL || rrn < 0) {
+        return 0;
+    }
+    fseek(arquivo, (long)offset, SEEK_SET);
+    return escrever_registro(arquivo, r);
 }
