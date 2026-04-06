@@ -1,46 +1,46 @@
 #ifndef FUNCIONALIDADES
 #define FUNCIONALIDADES
 
+/*
+    FUNCIONALIDADE [1] CREATE TABLE
+
+    Le o arquivo CSV de entrada e grava os dados em um arquivo binario.
+*/
+int funcionalidade_1(const char *csv_entrada, const char *bin_saida);
 
 /*
-    FUNCIONALIDADE CRIAR REGISTROS
+    FUNCIONALIDADE [2] SELECT FROM
 
-    permite a leitura de varios registros obtidos através de um arquivo csv de entrada
-    e os grava em um arquivo de dados de saida binario.
-
-    (arquivo_in):
-    nome do arquivo csv de entrada que contem os valores dos campos de registros a serem escritos
-    no arquivo de saida
-
-    (arquivo_out): 
-    nome do arquivo bin de saida gerado na execução da funcao
+    Recupera e imprime todos os registros ativos do arquivo.
 */
-void criarRegistros(char *arquivo_in, char* arquivo_out);
-
+int funcionalidade_2(const char *bin);
 
 /*
-    FUNCIONALIDADE RECUPERAR REGISTROS
+    FUNCIONALIDADE [3] SELECT FROM WHERE
 
-    permite a recuperação dos dados de um arquivo binario segundo as especificações do projeto, 
-
-    (nome_arquivo): 
-    nome do arquivo binario a ser lido pela função 
+    Recupera registros ativos que satisfazem todos os criterios de busca.
 */
-void recuperar_registros(char *nome_arquivo);
+int funcionalidade_3(const char *bin, int n);
 
-/* 
-    FUNCIONALIDADE RECUPERAR REGISTROS CONDICIONAL
+/*
+    FUNCIONALIDADE [4] DELETE FROM WHERE
 
-    permite a recuperação de dados de um arquivo binário seguindo condições de busca.
-
-    (nome_arquivo): 
-    nome do arquivo binario a ser lido pela função 
-
-    (n):
-    numero de buscas a serem feitas
-
+    Remove logicamente registros ativos que satisfazem todos os criterios.
 */
-void recuperar_registros_onde(char *nome_arquivo, int n);
+int funcionalidade_4(const char *bin, int n);
 
+/*
+    FUNCIONALIDADE [5] INSERT INTO
+
+    Insere novos registros reaproveitando slots removidos (pilha).
+*/
+int funcionalidade_5(const char *bin, int n);
+
+/*
+    FUNCIONALIDADE [6] UPDATE WHERE
+
+    Atualiza registros ativos que satisfazem os criterios de busca.
+*/
+int funcionalidade_6(const char *bin, int n);
 
 #endif

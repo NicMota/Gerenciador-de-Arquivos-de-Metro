@@ -1,8 +1,8 @@
 all:
-	gcc src/programaTrab.c src/cabecalho.c src/registro_dados.c src/auxiliares.c src/fornecidas.c src/funcionalidades.c -o main
+	gcc src/*.c -o executorprojeto -lm
 
 run:
-	./main
+	./executorprojeto
 
 zip:
-	zip trabalho.zip src/* makefile
+	zip trabalho.zip src/* makefile build.sh Doxyfile
